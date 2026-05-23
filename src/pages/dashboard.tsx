@@ -1,9 +1,10 @@
 import  ResumeStrip from "../components/dashboard/ResumeStrip";
+
+
 import  StatCard  from "../components/dashboard/StatCard";
 import  SubjectCard  from "../components/dashboard/SubjectCard";
 import { useEffect, useState } from 'react'
-import { fetchStats } from '../lib/ProgressBar'
-import { fetchProgress } from '../lib/ProgressBar'
+import { fetchStats, fetchLastSession, fetchProgress } from '../lib/ProgressBar'
 
 function getGreeting() {
     const hour = new Date().getHours()
@@ -22,19 +23,18 @@ export default function Dashboard() {
     completed: number
     total: number
     percent: number
-}[]>([])
+    }[]>([])
 
-useEffect(() => {
-        // console.log('use effect works')
+    const [session, setSession] = useState<{
+        subject: string
+        topic: string
+        questionsLeft: number
+    } | null>(null)
 
-        fetchStats().then(data => {
-            if (data) setStats(data)
-        })
-
-        fetchProgress().then(data => {
-            //console.log('progress in dashboard:', data)
-            if (data) setProgress(data)
-        })
+    useEffect(() => {
+        fetchStats().then(data => { if (data) setStats(data) })
+        fetchProgress().then(data => { if (data) setProgress(data) })
+        fetchLastSession().then(data => setSession(data))
     }, [])
 
 // console.log('progress subjects:', progress.map(r => r.subject))
@@ -95,8 +95,8 @@ useEffect(() => {
                 <p className="text-[11px] uppercase tracking-widest text-gray-400 font-medium mb-3">
                     Continue Where You Left Off
                 </p>
-                <div className="grid grid-cols-4 gap-3 mb-7">
-                    {/* resume strip goes here */}
+                <div className="w-full mb-7">
+                    <ResumeStrip session={session} />
                 </div>
 
             </div>
