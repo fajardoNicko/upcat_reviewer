@@ -1,3 +1,5 @@
+// This is for fetching each subject's name and if from supabase's postgresql database.
+
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import type { subject } from '../types/subject';
