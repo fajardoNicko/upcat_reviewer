@@ -1,12 +1,18 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { fetchSubjectBySlug, fetchTopicsBySubject, fetchQuestionsByTopic, saveLastSession } from '../lib/ProgressBar'
+import useUser from '../hooks/useUser'
+import Avatar from '../components/Avatar'
+
 
 type Subject = { id: string; name: string; slug: string; color: string; }
 type Topic = { id: string; name: string; description: string; }
 type Question = { id: string; text: string; option_a: string; option_b: string; option_c: string; option_d: string; correct_answer: number; explanation: string }
 
 export default function SubjectPage() {
+
+    const user = useUser()
+
     const { subjectId } = useParams()
     const navigate = useNavigate()
 
@@ -17,16 +23,24 @@ export default function SubjectPage() {
     const [currentIndex, setCurrentIndex] = useState(0)
     const [selected, setSelected] = useState<number | null>(null)
     const [showResult, setShowResult] = useState(false)
-
     const options = ['option_a', 'option_b', 'option_c', 'option_d'] as const
+
+    const [loading, setLoading] = useState(true)
+
+
+
 
     useEffect(() => {
         if (!subjectId) return
+        // console.log('subjectId from URL: ', subjectId)
         fetchSubjectBySlug(subjectId).then(data => {
+            // console.log('subject data: ', data)
             if (!data) return
             setSubject(data)
             fetchTopicsBySubject(data.id).then(topics => {
+                //console.log('topics data: ', topics)
                 if (topics) setTopics(topics)
+                setLoading(false)
             })
       
         })
@@ -58,62 +72,69 @@ function handleNext() {
 }
 const currentQuestion = questions[currentIndex]
 
+
+
 return (
     <>
-    <div className="min-h-screen bg-gray-100 flex flex-col">
-        <div className="bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between">
-            <div className="flex items-center gap-2 text-sm text-gray-400">
-                <span onClick={() => navigate('/')} className="cursor-pointer hover:text-violet-500 transition-colors">Dashboard</span>
+    <div className="min-h-screen bg-gray-100 dark:bg-black flex flex-col">
+        <div className="bg-white dark:bg-gray-950 border-b border-gray-100 dark:border-gray-700 px-6 py-4 flex items-center justify-between">
+            <div className="flex items-center gap-2 text-sm text-gray-400 dark:text-gray-500">
+                <span onClick={() => navigate('/')} className="cursor-pointer hover:text-violet-500 dark:hover:text-violet-400 transition-colors">Dashboard</span>
                 <span>,</span>
-                <span onClick={() => navigate(`/subject/${subjectId}`)} className="cursor-pointer hover:text-violet-500 transition-colors">{subject?.name}</span>
+                <span onClick={() => navigate(`/subject/${subjectId}`)} className="cursor-pointer hover:text-violet-500 dark:hover:text-violet-400 transition-colors">{subject?.name}</span>
                 {selectedTopic && (
                     <>
                     <span>,</span>
-                    <span className="text-gray-900 font-medium">{selectedTopic.name}</span>
+                    <span className="text-gray-900 dark:text-white font-medium">{selectedTopic.name}</span>
                     </>
                 )}
             </div>
-            <div className="w-9 h-9 rounded-full bg-violet-100 flex items-center justify-center text-sm font-semibold text-violet-700 select-none">
-                NF
+            <div className="w-9 h-9 rounded-full bg-violet-100 dark:bg-violet-950 flex items-center justify-center text-sm font-semibold text-violet-700 dark:text-violet-300 select-none">
+                { user && <Avatar avatar={user.avatar} initials={user.initials} name={user.name} /> }
             </div>
         </div>
         <div className="flex flex-1 max-w-7xl mx-auto w-full px-5 py-8 gap-6">
             <div className="w-64 shrink-0">
-                <p className="text-[11px] uppercase tracking-widest text-gray-400 font-medium mb-3">
+                <p className="text-[11px] uppercase tracking-widest text-gray-400 dark:text-gray-500 font-medium mb-3">
                     Topics
                 </p>
-                <div className="flex flex-col gap-2">
+                {loading ? (
+                    <p className="text-xs text-gray-400 dark:text-gray-500">Loading topics...</p>
+                ): (
+                    <div className="flex flex-col gap-2">
                     {topics.map(topic => (
-                        <div key={topic.id} onClick = {() => handleSelectTopic(topic)} className={`bg-white rounded-xl px-4 py-3 border cursor-pointer transition-all ${selectedTopic?.id === topic.id ? 'border-violet-400 shadow-sm' : 'border-gray-100 hover:border-violet-200'}`}>
-                            <p className={`text-sm font-medium ${selectedTopic?.id === topic.id ? 'text-violet-600' : 'text-gray-900'}`}>{topic.name}</p>
+                        <div key={topic.id} onClick = {() => handleSelectTopic(topic)} className={`bg-white dark:bg-gray-950 rounded-xl px-4 py-3 border cursor-pointer transition-all ${selectedTopic?.id === topic.id ? 'border-violet-400 dark:border-violet-600 shadow-sm' : 'border-gray-100 dark:border-gray-700 hover:border-violet-200 dark:hover:border-violet-700'}`}>
+                            <p className={`text-sm font-medium ${selectedTopic?.id === topic.id ? 'text-violet-600 dark:text-violet-400' : 'text-gray-900 dark:text-white'}`}>{topic.name}</p>
                         </div>
                     ))}
                 </div>
+                )}
+
             </div>
             <div className="flex-1">
                 {!selectedTopic ? (
                     <div className="h-full flex items-center justify-center">
-                        <p className ="text-gray-300 text-lg font-medium"> Select a topic to start learning. </p>
+                        <p className ="text-gray-300 dark:text-gray-600 text-lg font-medium"> Select a topic to start learning. </p>
                     </div>
                 ): questions.length === 0 ? (
                     <div className="h-full flex items-center justify-center">
-                        <p className ="text-gray-300 text-lg font-medium"> No questions yet for this topic </p>
+                        <p className ="text-gray-300 dark:text-gray-600 text-lg font-medium"> No questions yet for this topic </p>
                     </div>
                 ): currentIndex >= questions.length ? (
             <div className="h-full flex flex-col items-center justify-center gap-4">
-              <p className="text-2xl font-semibold text-gray-900">Topic Complete! 🎉</p>
-              <p className="text-gray-400 text-sm">You've finished all questions in {selectedTopic.name}</p>
+              <p className="text-2xl font-semibold text-gray-900 dark:text-white">Topic Complete! 🎉</p>
+              <p className="text-gray-400 dark:text-gray-500 text-sm">You've finished all questions in {selectedTopic.name}</p>
               <button
                 onClick={() => { setCurrentIndex(0); setSelected(null); setShowResult(false) }}
-                className="bg-violet-500 hover:bg-violet-600 text-white text-sm font-medium px-5 py-2.5 rounded-xl transition-colors"
+                className="bg-violet-500 hover:bg-violet-600 dark:bg-violet-600 dark:hover:bg-violet-500 text-white text-sm font-medium px-5 py-2.5 rounded-xl transition-colors"
               >
                 Restart Topic
               </button>
             </div>
             ): (
-                <div className="bg-white rounded-2xl p-8 border border-gray-100 shadow-sm">
-                    <p className = "text-xs text-gray-400 uppercase tracking-widest font-medium mb-6"> Question { currentIndex + 1} of {questions.length} </p>
-                    <p className = "text-gray-900 font-semibold text-lg mb-8">
+                <div className="bg-white dark:bg-gray-950 rounded-2xl p-8 border border-gray-100 dark:border-gray-700 shadow-sm">
+                    <p className = "text-xs text-gray-400 dark:text-gray-500 uppercase tracking-widest font-medium mb-6"> Question { currentIndex + 1} of {questions.length} </p>
+                    <p className = "text-gray-900 dark:text-white font-semibold text-lg mb-8">
                         {currentQuestion.text}
                     </p>
                     <div className="flex flex-col gap-3 mb-6">
@@ -121,11 +142,11 @@ return (
                             const isCorrect = i === currentQuestion.correct_answer
                             const isSelected = i === selected
 
-                            let style = 'border-gray-100 text-gray-700 hover:border-violet-200'
+                            let style = 'border-gray-100 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-violet-200 dark:hover:border-violet-700'
                             if (showResult) {
-                                if (isCorrect) style = 'border-green-400 bg-green-50 text-green-700'
-                                else if (isSelected) style = 'border-red-400 bg-red-50 text-red-700'
-                                else style = 'border-gray-100 text-gray-400'
+                                if (isCorrect) style = 'border-green-400 dark:border-green-600 bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-400'
+                                else if (isSelected) style = 'border-red-400 dark:border-red-600 bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-400'
+                                else style = 'border-gray-100 dark:border-gray-700 text-gray-400 dark:text-gray-600'
                             }
 
                             return (
@@ -139,11 +160,11 @@ return (
                     {showResult && (
                         <div className="flex flex-col gap-4">
                             {currentQuestion.explanation && (
-                                <div className="bg-gray-50 rounded-xl px-5 py-4 text-sm text-gray-500">
-                                    <span className="font-medium text-gray-700">Explanation: </span> {currentQuestion.explanation}
+                                <div className="bg-gray-50 dark:bg-black rounded-xl px-5 py-4 text-sm text-gray-500 dark:text-gray-500">
+                                    <span className="font-medium text-gray-700 dark:text-gray-300">Explanation: </span> {currentQuestion.explanation}
                                 </div>
                             )}
-                            <button onClick = {handleNext} className = "self-end bg-violet-500 hover:bg-violet-600 text-white text-sm font-medium px-5 py-2.5 rounded-xl transition-colors"> {currentIndex + 1 >= questions.length ? 'Finish' : 'NextQuestion -> '} </button>
+                            <button onClick = {handleNext} className = "self-end bg-violet-500 hover:bg-violet-600 dark:bg-violet-600 dark:hover:bg-violet-500 text-white text-sm font-medium px-5 py-2.5 rounded-xl transition-colors"> {currentIndex + 1 >= questions.length ? 'Finish' : 'NextQuestion -> '} </button>
                         </div>
                     )}
                 </div>

@@ -1,8 +1,12 @@
+// API slash components
 import  ResumeStrip from "../components/dashboard/ResumeStrip";
-
-
 import  StatCard  from "../components/dashboard/StatCard";
 import  SubjectCard  from "../components/dashboard/SubjectCard";
+import  useUser  from '../hooks/useUser'
+import Avatar from '../components/Avatar'
+import  { useNavigate } from 'react-router-dom'
+
+//Data Fetching
 import { useEffect, useState } from 'react'
 import { fetchStats, fetchLastSession, fetchProgress } from '../lib/ProgressBar'
 
@@ -13,6 +17,10 @@ function getGreeting() {
     return 'Evening'
 }
 export default function Dashboard() {
+    const user = useUser()
+    
+    const navigate = useNavigate()
+
     const [stats, setStats] = useState({
         topicsReviewed: 0,
         overallProgress: 0,
@@ -30,28 +38,40 @@ export default function Dashboard() {
         topic: string
         questionsLeft: number
     } | null>(null)
-
+    
+    const [loading, setLoading] = useState(true)
     useEffect(() => {
-        fetchStats().then(data => { if (data) setStats(data) })
-        fetchProgress().then(data => { if (data) setProgress(data) })
-        fetchLastSession().then(data => setSession(data))
+        Promise.all([
+        fetchStats().then(data => { if (data) setStats(data) }),
+        fetchProgress().then(data => { if (data) setProgress(data) }),
+        fetchLastSession().then(data => setSession(data)),
+        ]).finally(() => setLoading(false))
     }, [])
+
+   
+    if (loading) {
+        return(
+        <div className="min-h-screen bg-gray-100 dark:bg-black flex items-center justify-center">
+            <p className="text-gray-400 dark:text-gray-500 text-sm">Loading...</p>
+        </div>
+        )
+    }
 
 // console.log('progress subjects:', progress.map(r => r.subject))
     return (
-        <div className="min-h-screen bg-gray-100">
+        <div className="min-h-screen bg-gray-100 dark:bg-black">
             <div className="max-w-7xl mx-auto px-5 py-8">
 
                 {/* Header */}
                 <div className="relative flex items-center justify-center mb-7">
                     <div className="absolute left-0">
-                        <p className="text-sm text-gray-400">Good {getGreeting()}!</p>
+                        <p className="text-sm text-gray-400 dark:text-gray-500">Good {getGreeting()}!</p>
                     </div>
-                    <h1 className="text-xl font-semibold text-gray-900 tracking-tight">
+                    <h1 className="text-xl font-semibold text-gray-900 dark:text-white tracking-tight">
                         Entrance Exam Reviewer
                     </h1>
-                    <div className="absolute right-0 w-9 h-9 rounded-full bg-violet-100 flex items-center justify-center text-sm font-semibold text-violet-700 select-none">
-                        NF
+                    <div className="cursor-pointer absolute right-0 w-9 h-9 rounded-full bg-violet-100 dark:bg-violet-950 flex items-center justify-center text-sm font-semibold text-violet-700 dark:text-violet-300 select-none" onClick={() => navigate('/settings')}  >
+                        {user && <Avatar avatar={user.avatar} initials={user.initials} name={user.name} />}
                     </div>
                 </div>
 
@@ -62,7 +82,7 @@ export default function Dashboard() {
                     <StatCard label="Day Streak" value={stats.dayStreak} suffix=" 🔥" />
                 </div>
 
-                <p className="text-[11px] uppercase tracking-widest text-gray-400 font-medium mb-3">
+                <p className="text-[11px] uppercase tracking-widest text-gray-400 dark:text-gray-500 font-medium mb-3">
                     Subjects
                 </p>
                 <div className="grid grid-cols-4 gap-3 mb-7">
@@ -92,7 +112,7 @@ export default function Dashboard() {
                     />
                 </div>
 
-                <p className="text-[11px] uppercase tracking-widest text-gray-400 font-medium mb-3">
+                <p className="text-[11px] uppercase tracking-widest text-gray-400 dark:text-gray-500 font-medium mb-3">
                     Continue Where You Left Off
                 </p>
                 <div className="w-full mb-7">
