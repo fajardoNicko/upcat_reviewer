@@ -1,8 +1,9 @@
 import { useNavigate } from 'react-router-dom'
+import { type ReactNode } from 'react'
 
 type Props = {
   subject: string
-  icon: string
+  icon: ReactNode
   topics: string[]
   completed: number
   total: number

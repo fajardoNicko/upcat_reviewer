@@ -5,10 +5,14 @@ import  SubjectCard  from "../components/dashboard/SubjectCard";
 import  useUser  from '../hooks/useUser'
 import Avatar from '../components/Avatar'
 import  { useNavigate } from 'react-router-dom'
+import { Flame, FlaskConical, Calculator, BookOpen, FileText } from 'lucide-react'
+
+
 
 //Data Fetching
 import { useEffect, useState } from 'react'
 import { fetchStats, fetchLastSession, fetchProgress } from '../lib/ProgressBar'
+
 
 function getGreeting() {
     const hour = new Date().getHours()
@@ -59,7 +63,7 @@ export default function Dashboard() {
 
 // console.log('progress subjects:', progress.map(r => r.subject))
     return (
-        <div className="min-h-screen bg-gray-100 dark:bg-black">
+        <div className="min-h-screen bg-gray-100 dark:bg-black scrollbar-hide">
             <div className="max-w-7xl mx-auto px-5 py-8">
 
                 {/* Header */}
@@ -79,7 +83,7 @@ export default function Dashboard() {
                 <div className="grid grid-cols-3 gap-3 mb-7">
                     <StatCard label="Topics Reviewed" value={stats.topicsReviewed} />
                     <StatCard label="Overall Progress" value={stats.overallProgress} suffix="%" />
-                    <StatCard label="Day Streak" value={stats.dayStreak} suffix=" 🔥" />
+                    <StatCard label="Day Streak" value={stats.dayStreak} icon={<Flame size={20} />} />
                 </div>
 
                 <p className="text-[11px] uppercase tracking-widest text-gray-400 dark:text-gray-500 font-medium mb-3">
@@ -87,25 +91,25 @@ export default function Dashboard() {
                 </p>
                 <div className="grid grid-cols-4 gap-3 mb-7">
                     <SubjectCard subject ="Science"
-                    icon=""
+                    icon={<FlaskConical size={20} className='text-blue-500' />}
                     topics={['Earth Science', 'Astronomy', 'Biology', 'Chemistry', 'Physics']}
                     completed={progress.find(r => r.subject === 'Science')?.completed ?? 0}
                     total={6}
                     />
                     <SubjectCard subject = "Mathematics"
-                    icon=""
+                    icon={<Calculator size={20} className='text-green-500' />}
                     topics={['Arithmetic', 'Geometry', 'Algebra']}
                     completed={progress.find(r => r.subject === 'Mathematics')?.completed ?? 0}
                     total={5}
                     />
                     <SubjectCard subject = "Language Proficiency"
-                    icon=""
+                    icon={<BookOpen size={20} className='text-yellow-500' />}
                     topics={['Filipino', 'English']}
                     completed={progress.find(r => r.subject === 'Language Proficiency')?.completed ?? 0}
                     total={1}
                     />
                     <SubjectCard subject = "Reading Comprehension"
-                    icon=""
+                    icon={<FileText size={20} className='text-red-500' />}
                     topics={['Parts of Speech', 'Agreement', 'Bahagi ng Pananalita']}
                     completed={progress.find(r => r.subject === 'Reading Comprehension')?.completed ?? 0}
                     total={7}
