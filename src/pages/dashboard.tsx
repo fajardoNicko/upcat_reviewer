@@ -6,7 +6,7 @@ import  useUser  from '../hooks/useUser'
 import Avatar from '../components/Avatar'
 import  { useNavigate } from 'react-router-dom'
 import { Flame, FlaskConical, Calculator, BookOpen, FileText } from 'lucide-react'
-
+import DashboardSkeleton from '../components/skeletons/DashboardSkeleton'
 
 
 //Data Fetching
@@ -53,13 +53,7 @@ export default function Dashboard() {
     }, [])
 
    
-    if (loading) {
-        return(
-        <div className="min-h-screen bg-gray-100 dark:bg-black flex items-center justify-center">
-            <p className="text-gray-400 dark:text-gray-500 text-sm">Loading...</p>
-        </div>
-        )
-    }
+    if (loading) return <DashboardSkeleton />
 
 // console.log('progress subjects:', progress.map(r => r.subject))
     return (
