@@ -7,7 +7,7 @@ import Avatar from '../components/Avatar'
 import { User, Settings, Bell, HelpCircle } from 'lucide-react'
 import { Sun, Moon, Monitor } from 'lucide-react' 
 import { fetchProfile, updateProfile } from '../lib/ProgressBar'
-import SettingsSkeleton from '../components/skeletons/SettingsSkeleton'
+
 
 type Section = 'account' | 'preferences' | 'notifications' | 'support' 
 
