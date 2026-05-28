@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { fetchSubjectBySlug, fetchTopicsBySubject, fetchQuestionsByTopic, fetchQuestionsByLesson, saveLastSession, fetchLessonByTopic, saveLessonProgress, fetchLessonProgress } from '../lib/ProgressBar'
+import { fetchSubjectBySlug, fetchTopicsBySubject, fetchQuestionsByTopic, fetchQuestionsByLesson, saveLastSession, fetchLessonByTopic, saveLessonProgress, fetchLessonProgress, completeTopic } from '../lib/ProgressBar'
 import useUser from '../hooks/useUser'
 import Avatar from '../components/Avatar'
+
 
 type Subject = { id: string; name: string; slug: string; color: string }
 type Topic = { id: string; name: string; description: string }
@@ -24,29 +25,55 @@ export default function SubjectPage() {
     const [showResult, setShowResult] = useState(false)
     const [loading, setLoading] = useState(true)
     const [lessonMap, setLessonMap] = useState<Record<string, Lesson[]>>({})
-
+    const [score, setScore] = useState(0)
+    const [isLessonActive, setIsLessonActive] = useState(false)
+    const [lessonResult, setLessonResult] = useState<Record<string, 'pass' | 'fail' | 'incomplete' >>({})
+    const currentQuestion = questions[currentIndex]
     const options = ['option_a', 'option_b', 'option_c', 'option_d'] as const
+    
 
     useEffect(() => {
-        if (!subjectId) return
-        fetchSubjectBySlug(subjectId).then(async data => {
-            if (!data) return
-            setSubject(data)
-            const topicsData = await fetchTopicsBySubject(data.id)
-            if (topicsData) {
-                setTopics(topicsData)
-                const map: Record<string, Lesson[]> = {}
-                await Promise.all(
-                    topicsData.map(async topic => {
-                        const lessons = await fetchLessonByTopic(topic.id)
-                        map[topic.id] = lessons
-                    })
-                )
-                setLessonMap(map)
-            }
-            setLoading(false)
-        })
-    }, [subjectId])
+    if (!subjectId) return
+
+    const load = async () => {
+        const data = await fetchSubjectBySlug(subjectId)
+        if (!data) return
+        setSubject(data)
+
+        const topicsData = await fetchTopicsBySubject(data.id)
+        if (!topicsData) return
+        setTopics(topicsData)
+
+        const map: Record<string, Lesson[]> = {}
+        await Promise.all(
+            topicsData.map(async topic => {
+                const lessons = await fetchLessonByTopic(topic.id)
+                map[topic.id] = lessons
+            })
+        )
+        setLessonMap(map)
+
+        
+        const result: Record<string, 'pass' | 'fail' | 'incomplete'> = {}
+        await Promise.all(
+            Object.values(map).flat().map(async lesson => {
+                const progress = await fetchLessonProgress(lesson.id)
+                if (!progress) return
+                if (!progress.completed) {
+                    result[lesson.id] = 'incomplete'
+                } else if (progress.score / progress.total >= 0.5) {
+                    result[lesson.id] = 'pass'
+                } else {
+                    result[lesson.id] = 'fail'
+                }
+            })
+        )
+        setLessonResult(result)
+        setLoading(false)
+    }
+
+    load()
+}, [subjectId])
 
     async function handleSelectTopic(topic: Topic) {
         setSelectedTopic(topic)
@@ -69,6 +96,8 @@ export default function SubjectPage() {
         setShowResult(false)
         const qs = await fetchQuestionsByLesson(lesson.id)
         setQuestions(qs)
+        setScore(0)
+        setIsLessonActive(true)
         const savedProgress = await fetchLessonProgress(lesson.id)
         if (savedProgress && !savedProgress.completed) {
             setCurrentIndex(savedProgress.current_question)
@@ -79,11 +108,15 @@ export default function SubjectPage() {
             await saveLastSession(subject.name, topic.name, qs.length)
         }
     }
+    
 
     function handleAnswer(index: number) {
         if (showResult) return
         setSelected(index)
         setShowResult(true)
+        if (index === currentQuestion.correct_answer) {
+            setScore(s => s + 1)
+        }
     }
 
     function handleNext() {
@@ -94,18 +127,28 @@ export default function SubjectPage() {
 
         if (selectedLesson) {
             const completed = nextIndex >= questions.length
-            saveLessonProgress(selectedLesson.id, nextIndex, completed  )
-        }
-        if (subject && selectedTopic) {
-            saveLastSession(subject.name, selectedTopic.name, questions.length - currentIndex - 1)
+
+            if (completed && subject) {
+                saveLessonProgress(selectedLesson.id, nextIndex, completed, score, questions.length)
+                completeTopic(subject.name, lessonMap[selectedTopic?.id ?? '']?.length ?? 1)
+                setIsLessonActive(false)
+                // update local results
+                setLessonResult(prev => ({
+                    ...prev,
+                    [selectedLesson.id]: score / questions.length >= 0.5 ? 'pass' : 'fail'
+                }))
+            }
+            if (subject && selectedTopic) {
+                saveLastSession(subject.name, selectedTopic.name, questions.length - currentIndex - 1)
+            }
         }
     }
 
-    const currentQuestion = questions[currentIndex]
+
 
     return (
         <div className="h-screen bg-gray-100 dark:bg-black flex flex-col">
-            {/* Top Bar */}
+            
             <div className="bg-white dark:bg-gray-950 border-b border-gray-100 dark:border-gray-700 px-6 py-4 flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-2 text-sm text-gray-400 dark:text-gray-500">
                     <span onClick={() => navigate('/')} className="cursor-pointer hover:text-violet-500 dark:hover:text-violet-400 transition-colors">Dashboard</span>
@@ -143,12 +186,16 @@ export default function SubjectPage() {
                                 <div key={topic.id}>
                                     {/* Topic Row */}
                                     <div
-                                        onClick={() => handleSelectTopic(topic)}
-                                        className={`px-4 py-3 rounded-xl border cursor-pointer transition-all mb-1 ${
-                                            selectedTopic?.id === topic.id && !selectedLesson
-                                                ? 'border-violet-400 dark:border-violet-600 bg-violet-50 dark:bg-violet-950'
-                                                : 'border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-950 hover:border-violet-200 dark:hover:border-violet-700'
-                                        }`}
+                                        onClick={() => !isLessonActive && handleSelectTopic(topic)}
+                                        className={`px-4 py-3 rounded-xl border transition-all mb-1 ${
+                                        isLessonActive
+                                            ? 'cursor-not-allowed opacity-50'
+                                            : 'cursor-pointer hover:border-violet-200 dark:hover:border-violet-700'
+                                    } ${
+                                        selectedTopic?.id === topic.id && !selectedLesson
+                                            ? 'border-violet-400 dark:border-violet-600 bg-violet-50 dark:bg-violet-950'
+                                            : 'border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-950'
+                                    }`}
                                     >
                                         <p className={`text-sm font-medium ${
                                             selectedTopic?.id === topic.id && !selectedLesson
@@ -164,11 +211,15 @@ export default function SubjectPage() {
                                         {(lessonMap[topic.id] ?? []).map(l => (
                                             <div
                                                 key={l.id}
-                                                onClick={() => handleSelectLesson(l, topic)}
-                                                className={`flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-colors ${
+                                                onClick={() => !isLessonActive && handleSelectLesson(l, topic)}
+                                                className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
+                                                    isLessonActive
+                                                        ? 'cursor-not-allowed opacity-50'
+                                                        : 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-900'
+                                                } ${
                                                     selectedLesson?.id === l.id
                                                         ? 'bg-violet-50 dark:bg-violet-950'
-                                                        : 'hover:bg-gray-50 dark:hover:bg-gray-900'
+                                                        : ''
                                                 }`}
                                             >
                                                 <div className={`w-1 h-1 rounded-full shrink-0 ${
@@ -191,7 +242,7 @@ export default function SubjectPage() {
                 </div>
 
                 {/* Main Content */}
-                <div className="flex-1 overflow-y-auto">
+                <div className="flex-1 overflow-y-auto scrollbar-thin" >
                     {!selectedTopic && !selectedLesson ? (
                         <div className="h-full flex items-center justify-center">
                             <p className="text-gray-300 dark:text-gray-600 text-lg font-medium">Select a topic to start learning.</p>
@@ -202,38 +253,68 @@ export default function SubjectPage() {
                         </div>
                     ) : currentIndex >= questions.length ? (
                         <div className="h-full flex flex-col items-center justify-center gap-4">
-                            <p className="text-2xl font-semibold text-gray-900 dark:text-white">Lesson Complete! 🎉</p>
-                            <p className="text-gray-400 dark:text-gray-500 text-sm">
-                                You've finished all questions in {selectedLesson?.title}
+                            
+                            {/* Score */}
+                            <div className={`w-24 h-24 rounded-full flex items-center justify-center text-2xl font-bold border-4 ${
+                                score / questions.length >= 0.8
+                                    ? 'border-green-400 text-green-500'
+                                    : score / questions.length >= 0.5
+                                    ? 'border-yellow-400 text-yellow-500'
+                                    : 'border-red-400 text-red-500'
+                            }`}>
+                                {score}/{questions.length}
+                            </div>
+
+                            {/* Message */}
+                            <p className="text-2xl font-semibold text-gray-900 dark:text-white">
+                                {score / questions.length >= 0.8
+                                    ? 'Lesson Complete! '
+                                    : score / questions.length >= 0.5
+                                    ? 'Not bad! Keep practicing'
+                                    : 'Keep studying! You\'ll get it!'}
                             </p>
-                            <div className="flex gap-3">
+                            <p className="text-gray-400 dark:text-gray-500 text-sm">
+                                You got {score} out of {questions.length} correct in {selectedLesson?.title}
+                            </p>
+
+                            
+                            <div className="flex gap-3 mt-2">
+                                {/* Always show restart */}
                                 <button
-                                    onClick={() => { setCurrentIndex(0); setSelected(null); setShowResult(false) }}
+                                    onClick={() => { setCurrentIndex(0); setSelected(null); setShowResult(false); setScore(0); setIsLessonActive(false) }}
                                     className="bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 text-gray-700 dark:text-gray-300 text-sm font-medium px-5 py-2.5 rounded-xl transition-colors"
                                 >
                                     Restart Lesson
                                 </button>
-                                {(() => {
-                                    // find next lesson
-                                    const currentTopicLessons = lessonMap[selectedTopic?.id ?? ''] ?? []
-                                    const currentLessonIndex = currentTopicLessons.findIndex(l => l.id === selectedLesson?.id)
-                                    const nextLesson = currentTopicLessons[currentLessonIndex + 1]
-                                    return nextLesson ? (
-                                        <button
-                                            onClick={() => handleSelectLesson(nextLesson, selectedTopic!)}
-                                            className="bg-violet-500 hover:bg-violet-600 text-white text-sm font-medium px-5 py-2.5 rounded-xl transition-colors"
-                                        >
-                                            Next Lesson →
-                                        </button>
-                                    ) : (
-                                        <button
-                                            onClick={() => navigate('/')}
-                                            className="bg-violet-500 hover:bg-violet-600 text-white text-sm font-medium px-5 py-2.5 rounded-xl transition-colors"
-                                        >
-                                            Back to Dashboard
-                                        </button>
-                                    )
-                                })()}
+
+                               
+                                {score / questions.length >= 0.5 ? (
+                                    (() => {
+                                        const currentTopicLessons = lessonMap[selectedTopic?.id ?? ''] ?? []
+                                        const currentLessonIndex = currentTopicLessons.findIndex(l => l.id === selectedLesson?.id)
+                                        const nextLesson = currentTopicLessons[currentLessonIndex + 1]
+                                        return nextLesson ? (
+                                            <button
+                                                onClick={() => handleSelectLesson(nextLesson, selectedTopic!)}
+                                                className="bg-violet-500 hover:bg-violet-600 text-white text-sm font-medium px-5 py-2.5 rounded-xl transition-colors"
+                                            >
+                                                Next Lesson →
+                                            </button>
+                                        ) : (
+                                            <button
+                                                onClick={() => navigate('/')}
+                                                className="bg-violet-500 hover:bg-violet-600 text-white text-sm font-medium px-5 py-2.5 rounded-xl transition-colors"
+                                            >
+                                                Back to Dashboard
+                                            </button>
+                                        )
+                                    })()
+                                ) : (
+                                    // Score below 50% — encourage retry, no next lesson
+                                    <div className="bg-red-50 dark:bg-red-950 border border-red-100 dark:border-red-900 rounded-xl px-5 py-3 text-sm text-red-500 dark:text-red-400 text-center">
+                                        Score at least 50% to unlock the next lesson
+                                    </div>
+                                )}
                             </div>
                         </div>
                     ) : (
@@ -290,4 +371,4 @@ export default function SubjectPage() {
             </div>
         </div>
     )
-}
+    }

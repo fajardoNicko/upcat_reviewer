@@ -153,7 +153,7 @@ export async function updateProfile(profile: {
     })
 }
 
-export async function saveLessonProgress(lessonId: string, currentQuestion: number, completed:boolean) {
+export async function saveLessonProgress(lessonId: string, currentQuestion: number, completed:boolean, score:number = 0 , total:number = 0 ) {
     const { data: { user }} = await supabase.auth.getUser()
     if (!user) return
 
@@ -162,13 +162,70 @@ export async function saveLessonProgress(lessonId: string, currentQuestion: numb
         lesson_id: lessonId,
         current_question: currentQuestion,
         completed,
+        score,
+        total,
         updated_at: new Date().toISOString(),
     }, { onConflict: 'user_id, lesson_id'})
 }
 
-export async function fetchLessonProgress(lessonId: string): Promise<{ current_question: number; completed: boolean } | null > {
-    const { data, error } = await supabase.from('user_lesson_progress').select('current_question, completed').eq('lesson_id', lessonId).single()
+export async function fetchLessonProgress(lessonId: string): Promise<{ current_question: number; completed: boolean; score: number; total: number } | null > {
+    const { data, error } = await supabase.from('user_lesson_progress').select('current_question, completed, score, total').eq('lesson_id', lessonId).single()
 
     if (error || !data ) return null
-    return data as { current_question: number; completed: boolean } 
+    return data as { current_question: number; completed: boolean; score: number; total: number } 
+}
+
+export type UserExam = {
+  id: string
+  name: string
+  exam_date: string
+  location: string
+  notes: string
+}
+
+export async function fetchUserExams(): Promise<UserExam[]> {
+  const { data, error } = await supabase
+    .from('user_exams')
+    .select('id, name, exam_date, location, notes')
+    .order('exam_date')
+
+  if (error || !data) return []
+  return data as UserExam[]
+}
+
+export async function addUserExam(exam: Omit<UserExam, 'id'>) {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return
+
+  await supabase.from('user_exams').insert({
+    user_id: user.id,
+    ...exam,
+  })
+}
+
+export async function deleteUserExam(id: string) {
+  await supabase.from('user_exams').delete().eq('id', id)
+}
+
+export type WeakTopic = {
+    topic_name: string
+    subject_name: string
+    avg_score: number
+    attempts: number
+}
+
+export async function fetchWeakTopics(): Promise<WeakTopic[]> {
+    const { data: { user } } = await supabase.auth.getUser()
+    if(!user) return []
+
+    const { data, error } = await supabase.rpc('get_weak_topics', { p_user_id: user.id })
+    if (error || !data ) return []
+    return data as WeakTopic[]
+}
+
+export async function fetchActivityHistory(): Promise<{ active_date: string }[]> {
+    const { data, error } = await supabase.from('user_activity').select('active_date').order('active_date', {ascending: false}).limit(365)
+
+    if ( error || !data ) return []
+    return data as { active_date: string } []
 }

@@ -5,8 +5,9 @@ import  SubjectCard  from "../components/dashboard/SubjectCard";
 import  useUser  from '../hooks/useUser'
 import Avatar from '../components/Avatar'
 import  { useNavigate } from 'react-router-dom'
-import { Flame, FlaskConical, Calculator, BookOpen, FileText } from 'lucide-react'
+import { Flame, FlaskConical, Calculator, BookOpen, FileText, Calendar } from 'lucide-react'
 import DashboardSkeleton from '../components/skeletons/DashboardSkeleton'
+import WeakTopicsSummary from '../components/WeakTopicsSummary'
 
 
 //Data Fetching
@@ -68,16 +69,31 @@ export default function Dashboard() {
                     <h1 className="text-xl font-semibold text-gray-900 dark:text-white tracking-tight">
                         Entrance Exam Reviewer
                     </h1>
+                    <div className="absolute right-0 flex items-center gap-3">
+                        <button
+                            onClick={() => navigate('/calendar')}
+                            className="w-9 h-9 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                        >
+                            <Calendar size={16} className="text-gray-600 dark:text-gray-300" />
+                        </button>
+                        <div onClick={() => navigate('/settings')} className="cursor-pointer">
+                            {user && <Avatar avatar={user.avatar} initials={user.initials} name={user.name} />}
+                        </div>
+                    </div>
                     <div className="cursor-pointer absolute right-0 w-9 h-9 rounded-full bg-violet-100 dark:bg-violet-950 flex items-center justify-center text-sm font-semibold text-violet-700 dark:text-violet-300 select-none" onClick={() => navigate('/settings')}  >
                         {user && <Avatar avatar={user.avatar} initials={user.initials} name={user.name} />}
                     </div>
+
                 </div>
 
                 {/* StatCards */}
                 <div className="grid grid-cols-3 gap-3 mb-7">
                     <StatCard label="Topics Reviewed" value={stats.topicsReviewed} />
                     <StatCard label="Overall Progress" value={stats.overallProgress} suffix="%" />
-                    <StatCard label="Day Streak" value={stats.dayStreak} icon={<Flame size={20} />} />
+                    <div className="cursor-pointer" onClick={() => navigate('/streak')}>
+                        <StatCard label="Day Streak" value={stats.dayStreak} icon={<Flame size={20} />} />
+                    </div>
+                    
                 </div>
 
                 <p className="text-[11px] uppercase tracking-widest text-gray-400 dark:text-gray-500 font-medium mb-3">
@@ -110,6 +126,10 @@ export default function Dashboard() {
                     />
                 </div>
 
+                {/*Weak Topics Summary */}
+                <WeakTopicsSummary />
+
+                {/*Resume Strip */}
                 <p className="text-[11px] uppercase tracking-widest text-gray-400 dark:text-gray-500 font-medium mb-3">
                     Continue Where You Left Off
                 </p>
