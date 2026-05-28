@@ -18,7 +18,7 @@ export default function WeakTopicsSummary() {
         <div className="bg-white dark:bg-gray-950 rounded-2xl p-5 border border-gray-100 dark:border-gray-800 shadow-sm mb-7">
             <div className="flex items-center justify-between mb-4">
                 <p className='text-[11px] uppercase tracking-widest text-gray-400 font-medium'> Needs Improvement </p>
-                <button onClick={() => navigate('/weak=topics')} className='text-xs text-violet-500 hover:text-violet-600 font-medium transition-colors'> View All </button>
+                <button onClick={() => navigate('/weak-topics')} className='text-xs text-violet-500 hover:text-violet-600 font-medium transition-colors'> View All </button>
             </div>
             <div className="flex flex-col gap-3">
                 {topics.map(topic => (

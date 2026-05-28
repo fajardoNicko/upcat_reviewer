@@ -8,7 +8,8 @@ import { ChevronLeft, ChevronRight, Plus, Trash2, MapPin, FileText } from 'lucid
 
 // UP IS THE ONLY ONE WITH ANNOUNCED CAT
 const HARDCODED_EXAMS = [
-  { id: 'upcat-2026', name: 'UPCAT 2027', exam_date: '2026-08-01', location: 'Various UP Campuses', notes: 'University of the Philippines College Admission Test' }
+  { id: 'upcat-2026', name: 'UPCAT 2027 DAY !', exam_date: '2026-08-01', location: 'Various UP Campuses', notes: 'University of the Philippines College Admission Test' },
+  { id: 'upcat-2026', name: 'UPCAT 2027 DAY 2', exam_date: '2026-08-02', location: 'Various UP Campuses', notes: 'University of the Philippines College Admission Test' } 
 ]
 
 type AllExam = UserExam & { isCustom?: boolean }
@@ -86,7 +87,7 @@ export default function CalendarPage() {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-5 py-8 flex gap-6">
+      <div className="max-w-7xl mx-auto px-5 py-8 flex gap-6 h-[calc(100vh-81px)] overflow-hidden">
 
         {/* Left — Calendar */}
         <div className="flex-1 flex flex-col gap-4">
@@ -241,7 +242,7 @@ export default function CalendarPage() {
         </div>
 
         {/* Right — Upcoming Exams List */}
-        <div className="w-80 shrink-0 flex flex-col gap-4">
+        <div className="w-80 shrink-0 flex flex-col gap-4 h-full">
           <div className="flex items-center justify-between">
             <p className="text-[11px] uppercase tracking-widest text-gray-400 font-medium">Upcoming Exams</p>
             <button
@@ -253,7 +254,7 @@ export default function CalendarPage() {
             </button>
           </div>
 
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-3 overflow-y-auto pr-1 scrollbar-thin">
             {upcomingExams.length === 0 ? (
               <p className="text-sm text-gray-400 dark:text-gray-500">No upcoming exams</p>
             ) : (

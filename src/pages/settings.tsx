@@ -305,7 +305,7 @@ export default function SettingsPage() {
                                     </div>
                                     <div className="flex justify-between text-sm">
                                         <span className="text-gray-400 dark:text-gray-500">Built with</span>
-                                        <span className="text-gray-700 dark:text-gray-300 font-medium">React, TypeScript,p   Supabase, Tailwind</span>
+                                        <span className="text-gray-700 dark:text-gray-300 font-medium">React Framework, TypeScript, Supabase, Tailwind CSS</span>
                                     </div>
                                     </div>
                             </div>
@@ -316,7 +316,7 @@ export default function SettingsPage() {
                                 <p className="text-xs text-gray-400 dark:text-gray-500 mb-4">The person behind this app</p>
                                 <div className="flex items-center gap-4">
                                     <div className="w-12 h-12 rounded-full bg-violet-100 dark:bg-violet-950 flex items-center justify-center text-lg font-semibold text-violet-700 dark:text-violet-300">
-                                        NF
+                                        <img src='src\assets\hero2.JPG' alt="NF" className="w-full h-full object-cover rounded-full" />
                                     </div>
                                     <div>
                                         <p className="font-semibold text-gray-900 dark:text-white text-sm">Nicko Fajardo</p>
