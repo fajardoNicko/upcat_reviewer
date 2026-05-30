@@ -229,3 +229,42 @@ export async function fetchActivityHistory(): Promise<{ active_date: string }[]>
     if ( error || !data ) return []
     return data as { active_date: string } []
 }
+
+export async function fetchNote(lessonId: string): Promise<string> {
+    const { data, error } = await supabase.from('user_lesson_notes').select('content').eq('lesson_id', lessonId).single()
+
+    if (error || !data) return ''
+    return (data as { content: string }).content
+}
+
+export async function saveNote(lessonId: string, content: string) {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+
+    await supabase.from('user_lesson_notes').upsert({
+        user_id: user.id,
+        lesson_id: lessonId,
+        content,
+        updated_at: new Date().toISOString(),
+    }, { onConflict: 'user_id, lesson_id' })
+}
+
+export async function fetchBookmarks(): Promise<string[]> {
+    const { data, error } = await supabase.from('user_bookmarks').select('lesson_id')
+
+    if (error || !data) return[]
+    return (data as { lesson_id: string }[]).map(b => b.lesson_id)
+}
+
+export async function toggleBookmark(lessonId: string, isBookmarked: boolean) {
+    const { data: { user }} = await supabase.auth.getUser()
+    if (!user) return
+
+    if (isBookmarked) {
+        await supabase.from('user_bookmarks').delete().eq('user_id', user.id).eq('lesson_id', lessonId)
+    } else {
+        await supabase.from('user_bookmarks').insert({
+            user_id: user.id, lesson_id: lessonId,
+        })
+    }
+}

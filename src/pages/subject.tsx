@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { fetchSubjectBySlug, fetchTopicsBySubject, fetchQuestionsByTopic, fetchQuestionsByLesson, saveLastSession, fetchLessonByTopic, saveLessonProgress, fetchLessonProgress, completeTopic } from '../lib/ProgressBar'
+import { fetchSubjectBySlug, fetchTopicsBySubject, fetchQuestionsByTopic, fetchQuestionsByLesson, saveLastSession, fetchLessonByTopic, saveLessonProgress, fetchLessonProgress, completeTopic, fetchNote, saveNote, fetchBookmarks, toggleBookmark } from '../lib/ProgressBar'
 import useUser from '../hooks/useUser'
 import Avatar from '../components/Avatar'
-
+import { Bookmark, BookmarkCheck, NotebookPen, Lock, LockOpen } from 'lucide-react'
 
 type Subject = { id: string; name: string; slug: string; color: string }
 type Topic = { id: string; name: string; description: string }
@@ -15,6 +15,7 @@ export default function SubjectPage() {
     const { subjectId } = useParams()
     const navigate = useNavigate()
 
+    //Use State constants for every function within the subject page.
     const [subject, setSubject] = useState<Subject | null>(null)
     const [topics, setTopics] = useState<Topic[]>([])
     const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null)
@@ -30,12 +31,18 @@ export default function SubjectPage() {
     const [lessonResult, setLessonResult] = useState<Record<string, 'pass' | 'fail' | 'incomplete' >>({})
     const currentQuestion = questions[currentIndex]
     const options = ['option_a', 'option_b', 'option_c', 'option_d'] as const
-    
+    const [notes, setNotes] = useState('')
+    const [noteSaved, setNoteSaved] = useState(false)
+    const [showNote, setShowNote] = useState(false)
+    const [bookmarks, setBookmarks] = useState<string[]>([])
+    const [bookmarkLoading, setBookmarkLoading] = useState(false)
+    const [focusMode, setFocusMode] = useState(false)
 
     useEffect(() => {
     if (!subjectId) return
 
     const load = async () => {
+
         const data = await fetchSubjectBySlug(subjectId)
         if (!data) return
         setSubject(data)
@@ -69,7 +76,11 @@ export default function SubjectPage() {
             })
         )
         setLessonResult(result)
+
         setLoading(false)
+
+        const bookmarkData = await fetchBookmarks()
+        setBookmarks(bookmarkData)
     }
 
     load()
@@ -107,6 +118,9 @@ export default function SubjectPage() {
         if (subject) {
             await saveLastSession(subject.name, topic.name, qs.length)
         }
+        const savedNote = await fetchNote(lesson.id)
+        setNotes(savedNote)
+        setShowNote(false)
     }
     
 
@@ -144,6 +158,21 @@ export default function SubjectPage() {
         }
     }
 
+    async function handleSaveNote() {
+        if (!selectedLesson) return
+        await saveNote(selectedLesson.id, notes)
+        setNoteSaved(true)
+        setTimeout(() => setNoteSaved(false), 2000)
+    }
+
+    async function handleToggleBookmark() {
+        if (!selectedLesson) return
+        setBookmarkLoading(true)
+        const isBookmarked = bookmarks.includes(selectedLesson.id)
+        await toggleBookmark(selectedLesson.id, isBookmarked)
+        setBookmarks(prev => isBookmarked ? prev.filter(id => id !== selectedLesson.id) : [...prev, selectedLesson.id])
+        setBookmarkLoading(false)
+    }
 
 
     return (
@@ -186,9 +215,9 @@ export default function SubjectPage() {
                                 <div key={topic.id}>
                                     {/* Topic Row */}
                                     <div
-                                        onClick={() => !isLessonActive && handleSelectTopic(topic)}
+                                        onClick={() => !(isLessonActive && focusMode) && handleSelectTopic(topic)}
                                         className={`px-4 py-3 rounded-xl border transition-all mb-1 ${
-                                        isLessonActive
+                                        isLessonActive && focusMode
                                             ? 'cursor-not-allowed opacity-50'
                                             : 'cursor-pointer hover:border-violet-200 dark:hover:border-violet-700'
                                     } ${
@@ -208,32 +237,36 @@ export default function SubjectPage() {
 
                                     {/* Lessons — always visible */}
                                     <div className="ml-4 flex flex-col gap-1">
-                                        {(lessonMap[topic.id] ?? []).map(l => (
-                                            <div
+                                        {(lessonMap[topic.id] ?? []).map(l => {
+                                            const isBookmarked = bookmarks.includes(l.id)
+                                            return (
+                                                <div
                                                 key={l.id}
-                                                onClick={() => !isLessonActive && handleSelectLesson(l, topic)}
+                                                onClick={() => !(isLessonActive && focusMode) && handleSelectLesson(l, topic)}
                                                 className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
-                                                    isLessonActive
-                                                        ? 'cursor-not-allowed opacity-50'
-                                                        : 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-900'
-                                                } ${
-                                                    selectedLesson?.id === l.id
-                                                        ? 'bg-violet-50 dark:bg-violet-950'
-                                                        : ''
-                                                }`}
-                                            >
-                                                <div className={`w-1 h-1 rounded-full shrink-0 ${
+                                                    isLessonActive && focusMode
+                                                    ? 'cursor-not-allowed opacity-50'
+                                                    : 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-900'
+                                                } ${selectedLesson?.id === l.id ? 'bg-violet-50 dark:bg-violet-950' : ''}`}
+                                                >
+                                                <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                                                    lessonResult[l.id] === 'pass' ? 'bg-green-400' :
+                                                    lessonResult[l.id] === 'fail' ? 'bg-red-400' :
                                                     selectedLesson?.id === l.id ? 'bg-violet-400' : 'bg-gray-300 dark:bg-gray-600'
                                                 }`} />
-                                                <p className={`text-xs ${
+                                                <p className={`text-xs flex-1 ${
                                                     selectedLesson?.id === l.id
-                                                        ? 'text-violet-600 dark:text-violet-400 font-medium'
-                                                        : 'text-gray-500 dark:text-gray-400'
+                                                    ? 'text-violet-600 dark:text-violet-400 font-medium'
+                                                    : 'text-gray-500 dark:text-gray-400'
                                                 }`}>
                                                     {l.title}
                                                 </p>
-                                            </div>
-                                        ))}
+                                                {isBookmarked && (
+                                                    <Bookmark size={10} className="text-violet-400 shrink-0 fill-violet-400" />
+                                                )}
+                                                </div>
+                                            )
+                                            })}
                                     </div>
                                 </div>
                             ))}
@@ -318,15 +351,63 @@ export default function SubjectPage() {
                             </div>
                         </div>
                     ) : (
-                        <div className="bg-white dark:bg-gray-950 rounded-2xl p-8 border border-gray-100 dark:border-gray-700 shadow-sm">
-                            <p className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-widest font-medium mb-6">
+                        <div className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden">
+                            {/* Question Header */}
+                            <div className="flex items-center justify-between px-8 pt-6 pb-0">
+                                <p className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-widest font-medium">
                                 Question {currentIndex + 1} of {questions.length}
-                            </p>
-                            <p className="text-gray-900 dark:text-white font-semibold text-lg mb-8">
-                                {currentQuestion.text}
-                            </p>
-                            <div className="flex flex-col gap-3 mb-6">
-                                {options.map((key, i) => {
+                                </p>
+                                <div className="flex items-center gap-2">
+                                {/* Focus Mode Toggle */}
+                                <button
+                                    onClick={() => setFocusMode(v => !v)}
+                                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                                    focusMode
+                                        ? 'bg-orange-100 dark:bg-orange-950 text-orange-600 dark:text-orange-400'
+                                        : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
+                                    }`}
+                                >
+                                    {focusMode ? <Lock size={12} /> : <LockOpen size={12} />}
+                                    {focusMode ? 'Focused' : 'Focus'}
+                                </button>
+                                {/* Notes toggle */}
+                                <button
+                                    onClick={() => setShowNote(v => !v)}
+                                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                                    showNote
+                                        ? 'bg-violet-100 dark:bg-violet-950 text-violet-600 dark:text-violet-400'
+                                        : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
+                                    }`}
+                                >
+                                    <NotebookPen size={12} />
+                                    Notes
+                                </button>
+                                {/* Bookmark */}
+                                <button
+                                    onClick={handleToggleBookmark}
+                                    disabled={bookmarkLoading}
+                                    className={`p-1.5 rounded-lg transition-colors ${
+                                    selectedLesson && bookmarks.includes(selectedLesson.id)
+                                        ? 'text-violet-500 bg-violet-50 dark:bg-violet-950'
+                                        : 'text-gray-400 hover:text-violet-500 bg-gray-100 dark:bg-gray-800 hover:bg-violet-50 dark:hover:bg-violet-950'
+                                    }`}
+                                >
+                                    {selectedLesson && bookmarks.includes(selectedLesson.id)
+                                    ? <BookmarkCheck size={14} />
+                                    : <Bookmark size={14} />
+                                    }
+                                </button>
+                                </div>
+                            </div>
+
+                            <div className="flex gap-0">
+                                {/* Question Content */}
+                                <div className="flex-1 p-8 pt-4">
+                                <p className="text-gray-900 dark:text-white font-semibold text-lg mb-8">
+                                    {currentQuestion.text}
+                                </p>
+                                <div className="flex flex-col gap-3 mb-6">
+                                    {options.map((key, i) => {
                                     const isCorrect = i === currentQuestion.correct_answer
                                     const isSelected = i === selected
 
@@ -339,22 +420,22 @@ export default function SubjectPage() {
 
                                     return (
                                         <div
-                                            key={i}
-                                            onClick={() => handleAnswer(i)}
-                                            className={`border rounded-xl px-5 py-3.5 text-sm transition-all ${style} ${!showResult ? 'cursor-pointer' : 'cursor-default'}`}
+                                        key={i}
+                                        onClick={() => handleAnswer(i)}
+                                        className={`border rounded-xl px-5 py-3.5 text-sm transition-all ${style} ${!showResult ? 'cursor-pointer' : 'cursor-default'}`}
                                         >
-                                            <span className="font-medium mr-3">{['A', 'B', 'C', 'D'][i]}.</span>
-                                            {currentQuestion[key]}
+                                        <span className="font-medium mr-3">{['A', 'B', 'C', 'D'][i]}.</span>
+                                        {currentQuestion[key]}
                                         </div>
                                     )
-                                })}
-                            </div>
-                            {showResult && (
-                                <div className="flex flex-col gap-4">
+                                    })}
+                                </div>
+                                {showResult && (
+                                    <div className="flex flex-col gap-4">
                                     {currentQuestion.explanation && (
                                         <div className="bg-gray-50 dark:bg-black rounded-xl px-5 py-4 text-sm text-gray-500 dark:text-gray-400">
-                                            <span className="font-medium text-gray-700 dark:text-gray-300">Explanation: </span>
-                                            {currentQuestion.explanation}
+                                        <span className="font-medium text-gray-700 dark:text-gray-300">Explanation: </span>
+                                        {currentQuestion.explanation}
                                         </div>
                                     )}
                                     <button
@@ -363,9 +444,34 @@ export default function SubjectPage() {
                                     >
                                         {currentIndex + 1 >= questions.length ? 'Finish' : 'Next Question →'}
                                     </button>
+                                    </div>
+                                )}
                                 </div>
-                            )}
-                        </div>
+
+                                {/* Notes Panel */}
+                                {showNote && (
+                                <div className="w-72 border-l border-gray-100 dark:border-gray-800 flex flex-col">
+                                    <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
+                                    <p className="text-xs font-medium text-gray-500 dark:text-gray-400">Notes — {selectedLesson?.title}</p>
+                                    </div>
+                                    <textarea
+                                    value={notes}
+                                    onChange={e => setNotes(e.target.value)}
+                                    placeholder="Write your notes, formulas, mnemonics here..."
+                                    className="flex-1 p-4 text-sm text-gray-700 dark:text-gray-300 bg-transparent outline-none resize-none placeholder:text-gray-300 dark:placeholder:text-gray-600"
+                                    />
+                                    <div className="px-4 py-3 border-t border-gray-100 dark:border-gray-800">
+                                    <button
+                                        onClick={handleSaveNote}
+                                        className="w-full bg-violet-500 hover:bg-violet-600 text-white text-xs font-medium py-2 rounded-xl transition-colors"
+                                    >
+                                        {noteSaved ? 'Saved ✓' : 'Save Notes'}
+                                    </button>
+                                    </div>
+                                </div>
+                                )}
+                            </div>
+                            </div>
                     )}
                 </div>
             </div>

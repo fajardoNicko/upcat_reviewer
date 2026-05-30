@@ -181,7 +181,7 @@ export default function SettingsPage() {
                                 type="tel"
                                 value={profile.contact_number}
                                 onChange={e => setProfile(p => ({ ...p, contact_number: e.target.value }))}
-                                placeholder="+63 912 345 6789"
+                                placeholder="09123456789"
                                 className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white text-sm rounded-xl px-4 py-2.5 outline-none focus:border-violet-400 transition-colors placeholder:text-gray-300 dark:placeholder:text-gray-600"
                             />
                         </div>
