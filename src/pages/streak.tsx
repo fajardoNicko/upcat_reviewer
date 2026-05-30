@@ -115,7 +115,7 @@ export default function StreakPage() {
 
                 {/* Month labels */}
                 <div className="flex gap-1 ml-8">
-                  {weeks.map((week, i) => {
+                  {weeks.map((_, i) => {
                     const label = monthLabels.find(m => m.weekIndex === i)
                     return (
                       <div key={i} className="w-3 text-[10px] text-gray-400">

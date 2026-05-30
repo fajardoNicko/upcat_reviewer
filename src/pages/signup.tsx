@@ -1,10 +1,9 @@
 import { useState } from 'react'
-import { useNavigate, Link }from 'react-router-dom'
+import { Link }from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { Mail } from 'lucide-react'
 
 export default function SignUp() {
-    const navigate = useNavigate()
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [confirmPassword, setConfirmPassword] = useState('')
